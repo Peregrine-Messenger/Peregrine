@@ -1,11 +1,9 @@
-// BASE SETUP
-// =============================================================================
-
 // call the packages we need
 var express    = require('express');
 var bodyParser = require('body-parser');
 var app        = express();
 var morgan     = require('morgan');
+//var configDB = require('./config/database.js');
 
 // configure app
 app.use(morgan('dev')); // log requests to the console
@@ -17,105 +15,115 @@ app.use(bodyParser.json());
 var port     = process.env.PORT || 8080; // set our port
 
 var mongoose   = require('mongoose');
-mongoose.connect('mongodb://node:node@novus.modulusmongo.net:27017/Iganiq8o'); // connect to our database
-var Bear     = require('./app/models/bear');
+mongoose.connect('mongodb://hackgeny:password@novus.modulusmongo.net:27017/xizoV8ig'); // connect to our database
 
-// ROUTES FOR OUR API
-// =============================================================================
+var server = require('http').createServer(app);
+
+server.listen(port, function(){
+	console.log('listening '+ port);
+})
+server.listen(port);
+
+// Twilio Credentials
+var accountSid = 'ACa4fb98b020de53c9f931650cb946bede';
+var authToken = '3e98ce0d8213eb477c013a12a449b9e6';
+
+//require the Twilio module and create a REST client
+
+function sendMessages(message,destination){
+ 	var osascript = require('node-osascript');
+ 	osascript.execute('tell application "Messages" to send info to buddy "James Anderson"',{info: message},function(error, result, raw){
+  if (err) return console.error(err)
+    console.log(result, raw)
+});
+ 	return 0;
+ }
+function sendText(message,destination){
+	var client = require('twilio')(accountSid, authToken);
+  	client.sendMessage({
+
+  	    to: destination, // Any number Twilio can deliver to
+  	    from: '+13234571289', // A number you bought from Twilio and can use for outbound communication
+ 	    body: message // body of the SMS message
+
+ 	}, function(err, responseData) { //this function is executed when a response is received from Twilio
+
+ 	    if (!err) { // "err" is an error received during the request, if an
+
+ 	        console.log(responseData.from); // outputs "+14506667788"
+ 	        console.log(responseData.body); // outputs "word to your mother."
+
+ 	    }else{
+ 	    console.log("err");
+ 	    console.log(err);
+ 		}
+ 	});
+ 	return 0;
+ }
 
 // create our router
 var router = express.Router();
 
-// middleware to use for all requests
-router.use(function(req, res, next) {
-	// do logging
-	console.log('Something is happening.');
-	next();
-});
-
-// test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 router.get('/', function(req, res) {
-	res.json({ message: 'hooray! welcome to our api!' });	
+	res.json({ message: 'hooray! welcome to our api!' });
 });
 
-// on routes that end in /bears
-// ----------------------------------------------------
-router.route('/bears')
+//router.get('/iMessageToSMS' function(req, res){
 
-	// create a bear (accessed at POST http://localhost:8080/bears)
-	.post(function(req, res) {
-		
-		var bear = new Bear();		// create a new instance of the Bear model
-		bear.name = req.body.name;  // set the bears name (comes from the request)
+//});
 
-		bear.save(function(err) {
-			if (err)
-				res.send(err);
+router.get('/twilio', function(req, res){
+	//console.log('abc');
+	var body = req.query.Body;
+	var from = req.query.From;
+	//exports.bridgeFunction =function (string){body=string;} //allows bridge.js to change body
 
-			res.json({ message: 'Bear created!' });
-		});
+	module.exports={
+			bridgeFunction: function(string){body=string;}
+	}
+	var unsplit = body.split(":", 2);
+	var destination = unsplit[0];
+	var message = unsplit[1];
 
-		
-	})
+	//console.log(body);
+	console.log(destination);
+	console.log(message);
+	var myBoolean = false;
+	for(var i = 0; i<destination.length; i++){
+		if(destination.substring(i,i+1) == " " || destination.substring(i,i+1) == "@"){
+			myBoolean = true;
+		}
+	}
 
-	// get all the bears (accessed at GET http://localhost:8080/api/bears)
-	.get(function(req, res) {
-		Bear.find(function(err, bears) {
-			if (err)
-				res.send(err);
-
-			res.json(bears);
-		});
-	});
-
-// on routes that end in /bears/:bear_id
-// ----------------------------------------------------
-router.route('/bears/:bear_id')
-
-	// get the bear with that id
-	.get(function(req, res) {
-		Bear.findById(req.params.bear_id, function(err, bear) {
-			if (err)
-				res.send(err);
-			res.json(bear);
-		});
-	})
-
-	// update the bear with this id
-	.put(function(req, res) {
-		Bear.findById(req.params.bear_id, function(err, bear) {
-
-			if (err)
-				res.send(err);
-
-			bear.name = req.body.name;
-			bear.save(function(err) {
-				if (err)
-					res.send(err);
-
-				res.json({ message: 'Bear updated!' });
-			});
-
-		});
-	})
-
-	// delete the bear with this id
-	.delete(function(req, res) {
-		Bear.remove({
-			_id: req.params.bear_id
-		}, function(err, bear) {
-			if (err)
-				res.send(err);
-
-			res.json({ message: 'Successfully deleted' });
-		});
-	});
+	message = message + "From: " + from;
+	if(myBoolean)
+	{
+		sendMessages(message,destination);
+		console.log("method called");}
+	else
+	{
+		sendText(message,destination);}
 
 
-// REGISTER OUR ROUTES -------------------------------
-app.use('/api', router);
+});
 
-// START THE SERVER
-// =============================================================================
-app.listen(port);
-console.log('Magic happens on port ' + port);
+
+// var applescript = require("applescript");
+
+// // Very basic AppleScript command. Returns the song name of each
+// // currently selected track in iTunes as an 'Array' of 'String's.
+// var script = 'tell application "iTunes" to get name of selection';
+
+// applescript.execString(script, function(err, rtn) {
+//   if (err) {
+//     // Something went wrong!
+//   }
+//   if (Array.isArray(rtn)) {
+//     rtn.forEach(function(songName) {
+//       console.log(songName);
+//     });
+//   }
+// });
+
+app.use('/', router);
+
